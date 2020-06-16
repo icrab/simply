@@ -1,10 +1,81 @@
 import asyncio
 import logging
+import redis
 import websockets
 import msgpack
 import zlib
 import traceback
 from pebble import ProcessPool
+
+class SimplyRedisServer():
+    def __init__(self,path):
+        self.redis = redis.from_url(path)
+
+    pool = ProcessPool()
+    functions = {}
+    client_id2ws = {}
+    running_tasks = {}
+
+    def _numpy_encode(self, obj):
+        return zlib.compress(obj.tobytes())
+
+    @classmethod
+    def rpc(cls, f):
+        def registry_method(self, f):
+            self.functions[format(f.__name__)] = f
+
+        registry_method(cls, f)
+        return f
+
+    def run(self):
+        while True:
+            _, message = self.redis.blpop("syntelly:general")
+            print(len(message))
+            print(message)
+            head = message[:4]
+            if head == b'zlib':
+                logging.debug('Zlib message')
+                message = zlib.decompress(message[4:])
+            call = msgpack.unpackb(message, raw=False)
+            logging.debug("new message {}".format(message))
+            result = {}
+            try:
+                # call['method'] = "___{}".format(call['method'])
+                # timeout = 3600 if 'timeout' is in call else call['timeout']
+                if call['type'] == 'instant':
+                    res = self.functions[call['method']](*call['args'], **call['kwargs'])
+                    result.update({'status': 'ok', 'result': res, 'id': call['id']})
+                elif call['type'] == 'delayed':
+                    future = self.pool.schedule(self.functions[call['method']], call['args'], call['kwargs'],
+                                                timeout=3600)
+                    task = call['id']
+                    self.running_tasks[task] = future
+                    result.update({'status': 'running', 'id': task})
+                elif call['type'] == 'cancel':
+                    logging.debug("cancelling task {}".format(call['id']))
+                    self.running_tasks[call['id']][1].cancel()
+                    if self.running_tasks[call['id']][1].cancelled():
+                        logging.debug("task {} is cancelled".format(call['id']))
+                        result = {'status': 'cancelled', 'id': self.running_tasks[call['id']]}
+                        del self.running_tasks[call['id']]
+            except Exception as e:
+                if 'id' in call:
+                    task = call['id']
+                else:
+                    task = None
+                result.update(
+                    {'status': 'error', 'type': type(e).__name__, 'id': task, 'exception': traceback.format_exc()})
+
+            print("syntelly:general:{}".format(call['id']))
+            self.redis.rpush("syntelly:general:{}".format(call['id']),msgpack.packb(result, use_bin_type=True))
+            self.redis.expire("syntelly:general:{}".format(call['id']),30)
+            # elif call['type'] == 'pending':
+            #    result = {'status': 'ok', 'pending': self.running_tasks}
+            '''
+            logging.debug("result {}".format(result))
+            await websocket.send(msgpack.packb(result, use_bin_type=True))  
+            '''
+
 
 class SimplyRPCServer():
 
@@ -91,8 +162,8 @@ class SimplyRPCServer():
                                 pass
 
                     for task in to_remove:
-
                         del self.running_tasks[task]
+
             consumer_task = asyncio.ensure_future(
                 consumer_handler(websocket, path))
             futures_task = asyncio.ensure_future(
