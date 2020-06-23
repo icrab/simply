@@ -10,7 +10,7 @@ idx = str(uuid4())
 run = {'method':'add','type':'instant','args':[1,4],'kwargs':{},'id':idx}
 c.rpush('syntelly:general',msgpack.packb(run, use_bin_type=True))
 print('syntelly:general:{}'.format(idx))
-print(msgpack.unpackb(c.blpop('syntelly:general:{}'.format(idx))[1]))
+print(c.blpop('syntelly:general:{}'.format(idx))[1])
 '''
 async def hello():
     uri = "ws://localhost:8000/1"

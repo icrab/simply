@@ -8,9 +8,9 @@ import traceback
 from pebble import ProcessPool
 
 class SimplyRedisServer():
-    def __init__(self,path):
+    def __init__(self,path,name):
         self.redis = redis.from_url(path)
-
+        self.name  = name
     pool = ProcessPool()
     functions = {}
     client_id2ws = {}
@@ -29,7 +29,7 @@ class SimplyRedisServer():
 
     def run(self):
         while True:
-            _, message = self.redis.blpop("syntelly:general")
+            _, message = self.redis.blpop("syntelly:{}".format(self.name))
             print(len(message))
             print(message)
             head = message[:4]
