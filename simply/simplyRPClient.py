@@ -1,16 +1,32 @@
 #import asyncio
 #import logging
-from uuid import uuid4
+import uuid
 #import websockets
 import msgpack
 import redis
 
+class SimplyRedisClient():
+    def __init__(self,host,port,name):
+        self.redis = redis.from_url("redis://{}:{}".format(host,port))
+        self.name = name
+
+    def call(self,function,args,kwargs,type='instant'):
+        idx = str(uuid.uuid4())
+        run = {'method': function, 'type': type, 'args': args, 'kwargs': kwargs, 'id': idx}
+        self.redis.rpush('syntelly:{}'.format(self.name), msgpack.packb(run, use_bin_type=True))
+        res = msgpack.unpackb(self.redis.blpop('syntelly:general:{}'.format(idx))[1])
+        assert res[b'status'] == b'ok'
+        return res[b'result']
+
+
+'''
 c = redis.from_url("redis://localhost:6379")
 idx = str(uuid4())
 run = {'method':'add','type':'instant','args':[1,4],'kwargs':{},'id':idx}
 c.rpush('syntelly:general',msgpack.packb(run, use_bin_type=True))
 print('syntelly:general:{}'.format(idx))
 print(c.blpop('syntelly:general:{}'.format(idx))[1])
+'''
 '''
 async def hello():
     uri = "ws://localhost:8000/1"
