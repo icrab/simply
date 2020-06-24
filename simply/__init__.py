@@ -1,3 +1,4 @@
 from simply.simplyRPCServer import SimplyRPCServer,SimplyRedisServer
-__all__ = ['SimplyRPCServer','SimplyRedisServer']
-__version__ = "0.0.1"
+from simply.simplyRPClient import SimplyRedisClient
+__all__ = ['SimplyRPCServer','SimplyRedisServer','SimplyRedisClient']
+__version__ = "0.0.2"
