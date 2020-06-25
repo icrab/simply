@@ -1,3 +1,4 @@
 *.pyc
 .idea
 __pycahce__
+.pytest_cache

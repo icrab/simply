@@ -17,7 +17,7 @@ class SimpleTest(SimplyRedisServer):
     def delayed_count(n):
         for i in range(n):
             time.sleep(1)
-        return 0
+        return 42
 
     @SimplyRedisServer.rpc
     def hello(name):
@@ -25,18 +25,28 @@ class SimpleTest(SimplyRedisServer):
 
 
 def run_simple_test():
-    server = SimpleTest("redis://localhost:6379", 'test')
+    server = SimpleTest("redis://localhost:6379", 'test','mock')
     server.run()
 
 def test_instant():
     x = Process(target=run_simple_test)
     x.start()
-    c = SimplyRedisClient("redis://localhost:6379",'test')
+    c = SimplyRedisClient("redis://localhost:6379",'test','mock')
     assert c.call('add',[1,2],{}) == 3
     assert c.call('hello',[],{'name':'simply'}) == b"hello, simply"
-    assert c.call('delayed_count',[3], {},type='delayed') == 0
-
+    #assert c.call('delayed_count',[3], {},type='delayed') == 42
+    #assert c.call('delayed_count',[3], {},type='delayed') == 0
     x.terminate()
+    #time.sleep(10)
+
+def test_delayed():
+    x = Process(target=run_simple_test)
+    x.start()
+    #time.sleep(1)
+    c = SimplyRedisClient("redis://localhost:6379",'test','mock')
+    assert c.call('delayed_count',[5], {},type='delayed') == 42
+    x.terminate()
+
 #connection = redis.from_url("redis://localhost:6379")
 
 #while True:

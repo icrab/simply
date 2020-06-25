@@ -8,9 +8,10 @@ import traceback
 from pebble import ProcessPool
 
 class SimplyRedisServer():
-    def __init__(self,path,name):
+    def __init__(self,path,name,plugin):
         self.redis = redis.from_url(path)
         self.name  = name
+        self.plugin = plugin
 
     pool = ProcessPool()
     functions = {}
@@ -35,15 +36,18 @@ class SimplyRedisServer():
             result = {}
             task = self.inverse_running_tasks[future]
             result.update({'status': 'ok', 'result': future.result(), 'id': task})
-            self.redis.rpush("syntelly:general:{}".format(task),msgpack.packb(result, use_bin_type=True))
-            self.redis.expire("syntelly:general:{}".format(task),30)
+            self.redis.rpush("{}:general:{}".format(self.name,task),msgpack.packb(result, use_bin_type=True))
+            self.redis.expire("{}:general:{}".format(self.name,task),30)
             #result.update(
             #    {'status': 'error', 'type': type(e).__name__, 'id': task, 'exception': traceback.format_exc()})
 
             #print(future,task)
-
+        queue = "{}:{}".format(self.name,self.plugin)
+        processing = "{}:processing:{}".format(self.name,self.plugin)
         while True:
-            _, message = self.redis.blpop("syntelly:{}".format(self.name))
+            message = self.redis.brpoplpush(queue,processing,5)
+            if not message: continue
+            print("Message: ",message)
             head = message[:4]
             if head == b'zlib':
                 logging.debug('Zlib message')
@@ -80,8 +84,8 @@ class SimplyRedisServer():
                     {'status': 'error', 'type': type(e).__name__, 'id': task, 'exception': traceback.format_exc()})
 
             #print("syntelly:general:{}".format(call['id']))
-            self.redis.rpush("syntelly:general:{}".format(call['id']),msgpack.packb(result, use_bin_type=True))
-            self.redis.expire("syntelly:general:{}".format(call['id']),30)
+            self.redis.rpush("{}:general:{}".format(self.name,call['id']),msgpack.packb(result, use_bin_type=True))
+            self.redis.expire("{}:general:{}".format(self.name,call['id']),30)
 
 
 class SimplyRPCServer():
