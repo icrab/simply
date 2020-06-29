@@ -17,7 +17,6 @@ class SimplyRedisClient():
         if type == 'delayed':
         #    print(res)
             res = msgpack.unpackb(self.redis.blpop('{}:general:{}'.format(self.name,idx))[1],raw=False)
-        print("res is ", res)
         if res['status'] == 'error':
             raise Exception(res['exception'])
         elif res['status'] == 'ok':
