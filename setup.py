@@ -13,6 +13,7 @@ setup(name='simply',
           'msgpack',
           'pebble',
           'redis',
-          'asyncio'
+          'asyncio',
+          'envs'
       ]
      )
