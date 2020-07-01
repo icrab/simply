@@ -12,6 +12,7 @@ setup(name='simply',
           'websockets',
           'msgpack',
           'pebble',
+          'redis',
           'asyncio'
       ]
      )
