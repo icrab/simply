@@ -9,11 +9,9 @@ setup(name='simply',
       author_email='serg.sosnin@gmail.com',
       packages=['simply'],
       install_requires=[
-          'websockets',
           'msgpack',
           'pebble',
           'redis',
-          'asyncio',
           'envs'
       ]
      )
