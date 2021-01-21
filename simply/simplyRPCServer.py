@@ -42,7 +42,6 @@ class SimplyRedisServer():
         while True:
             message = self.redis.brpoplpush(queue,processing,5)
             if not message: continue
-            print("Message: ",message)
             head = message[:4]
             if head == b'zlib':
                 logging.debug('Zlib message')
