@@ -7,7 +7,7 @@ from pebble import ProcessPool
 
 class SimplyRedisServer():
     def __init__(self,path,name,plugin):
-        self.redis = redis.from_url(path)
+        self.redis = redis.from_url(path,socket_keepalive=True,retry_on_timeout=True)
         self.name  = name
         self.plugin = plugin
 
