@@ -1,57 +1,24 @@
-#import redis
-import time
-from multiprocessing import Process
-
-import pytest
-
 from simply import SimplyRedisClient
-from simply.simplyRPCServer import SimplyRedisServer
+from simply.simplyRPCServer import SimplyRedisServer, Runtype
 
-
-class SimpleTest(SimplyRedisServer):
-    @SimplyRedisServer.rpc
-    def add(x, y):
-        return x + y
-
-    @SimplyRedisServer.rpc
-    def delayed_count(n):
-        for i in range(n):
-            time.sleep(1)
-        return 42
-
-    @SimplyRedisServer.rpc
-    def hello(name):
-        return "hello, {}".format(name)
-
-
-def run_simple_test():
-    server = SimpleTest("redis://localhost:6379", 'test','mock')
-    server.run()
 
 def test_instant():
-    x = Process(target=run_simple_test)
-    x.start()
+    server = SimplyRedisServer('redis://localhost', 'test', 'mock')
+    @server.rpc
+    def add(x, y):
+        return x + y
     c = SimplyRedisClient("redis://localhost:6379",'test','mock')
     assert c.call('add',[1,2],{}) == 3
-    assert c.call('hello',[],{'name':'simply'}) == b"hello, simply"
-    #assert c.call('delayed_count',[3], {},type='delayed') == 42
-    #assert c.call('delayed_count',[3], {},type='delayed') == 0
-    x.terminate()
-    #time.sleep(10)
+    server.stop()
 
-def test_delayed():
-    x = Process(target=run_simple_test)
-    x.start()
-    #time.sleep(1)
-    c = SimplyRedisClient("redis://localhost:6379",'test','mock')
-    assert c.call('delayed_count',[5], {},type='delayed') == 42
-    x.terminate()
+def test_delayed(): #FixMe: tests does not work properly!
+    server = SimplyRedisServer('redis://localhost', 'test', 'mock')
 
-#connection = redis.from_url("redis://localhost:6379")
+    @server.rpc(type=Runtype.Delayed,timeout=10)
+    def countdown(x,callback):
+        for i in range(x):
+            callback(progress=(i,x),message="running {}".format(i))
+        return "A missile is launched!"
 
-#while True:
-#    _,message = connection.blpop("syntelly_calls")
-
-    #print(message)
-#connection.mset({"Croatia": "Zagreb", "Bahamas": "Nassau"})
-#print(connection.get('Bahamas'))
+    c = SimplyRedisClient("redis://localhost:6379", 'test', 'mock')
+    assert c.call('countdown',[10],{},type='delayed') == "A missile is launched!"

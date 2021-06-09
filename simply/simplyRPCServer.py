@@ -58,7 +58,7 @@ class SimplyRedisServer():
             self.redis.rpush("{}:general:{}".format(self.name, task_id), msgpack.packb(result, use_bin_type=True))
             self.redis.expire("{}:general:{}".format(self.name, task_id), self.results_shortlist_timeout)
 
-            self.redis.set("{}:state:{}".format(self.name, task_id), msgpack.packb(result, use_bin_type=True),ex=self.results_shortlist_timeout)
+            self.redis.set("{}:state:{}".format(self.name, task_id), msgpack.packb(result, use_bin_type=True),ex=self.results_longterm_timeout)
 
 
         def _done_callback(future,task_id=None):
