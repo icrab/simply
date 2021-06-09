@@ -1,9 +1,13 @@
 import logging
+import os
 import redis
 import msgpack
 import zlib
 import traceback
 from pebble import ProcessPool
+
+LOGLEVEL = os.environ.get('SIMPLY_LOGLEVEL', 'INFO').upper()
+logging.basicConfig(level=LOGLEVEL)
 
 class SimplyRedisServer():
     def __init__(self,path,name,plugin):
