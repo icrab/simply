@@ -14,7 +14,7 @@ import traceback
 from pebble import ProcessPool
 
 def get_logging_level(level):
-    return {'debug':logging.DEBUG,'info':logging.INFO,'warning':logging.WARNING,'error':logging.ERROR,'critical':logging.CRITICAL}[level]
+    return {'debug':logging.DEBUG,'info':logging.INFO,'warning':logging.WARNING,'error':logging.ERROR,'critical':logging.CRITICAL}[level.upper()]
 
 class Runtype(IntEnum):
     #Either the request is instant or delayed
