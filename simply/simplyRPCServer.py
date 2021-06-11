@@ -84,6 +84,7 @@ class SimplyRedisServer():
         processing = "{}:processing:{}".format(self.name, self.plugin)
         while self.running:
             try:
+                self.redis.ping()
                 message = self.redis.brpoplpush(queue, processing, 1)
             except:
                 time.sleep(1)
