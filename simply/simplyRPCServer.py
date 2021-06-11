@@ -85,7 +85,7 @@ class SimplyRedisServer():
         while self.running:
             try:
                 self.redis.ping()
-                self.logger.debug("ping was successful")
+                self.logger.debug("ping was successful!")
                 message = self.redis.brpoplpush(queue, processing, 1)
             except:
                 time.sleep(1)
