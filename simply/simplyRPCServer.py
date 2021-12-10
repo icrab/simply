@@ -11,7 +11,6 @@ from functools import wraps
 import msgpack
 import zlib
 import traceback
-from pebble import ProcessPool
 
 def get_logging_level(level):
     return {'debug':logging.DEBUG,'info':logging.INFO,'warning':logging.WARNING,'error':logging.ERROR,'critical':logging.CRITICAL}[level.lower()]
