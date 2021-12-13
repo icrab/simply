@@ -1,6 +1,21 @@
 import uuid
 import msgpack
 import redis
+from tqdm import tqdm
+
+def prepare_msgpkg_request(function,args,kwargs):
+    idx = str(uuid.uuid4())
+    run = {'method': function, 'type': 'instant', 'args': args, 'kwargs': kwargs, 'id': idx}
+    return msgpack.packb(run)
+
+def prepare_msgpkg_multiple_requests_for_one_function_with_args_only(function,list_of_args):
+    array = []
+    for request in tqdm(list_of_args,desc="preparing requests"):
+        idx = str(uuid.uuid4())
+        run = {'method': function, 'type': 'instant', 'args': request, 'kwargs': {}, 'id': idx}
+        array.append(run)
+    return msgpack.packb(array)
+
 
 class SimplyRedisClient():
     def __init__(self,url,name,plugin):
@@ -35,8 +50,7 @@ class SimplyRedisClient():
                 elif response['status'] == 'initiated':
                     pass
                 elif response['status'] == 'running':
-                    #callback({"progress":response['progress'],"message":response['message']})
-                    pass
+                    callback(**{"progress":response['progress'],"message":response['message']})
                 else:
                     raise Exception("Unknown error: {}".format(response))
 
