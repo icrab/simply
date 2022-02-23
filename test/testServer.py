@@ -1,57 +1,43 @@
-#import redis
+import threading
 import time
-from multiprocessing import Process
-
-import pytest
 
 from simply import SimplyRedisClient
-from simply.simplyRPCServer import SimplyRedisServer
+from simply.simplyRPCServer import SimplyRedisServer, Runtype
 
 
-class SimpleTest(SimplyRedisServer):
-    @SimplyRedisServer.rpc
+def test_instant():
+    server = SimplyRedisServer('localhost',6379, 'test', 'mock')
+    @server.rpc(type=Runtype.Instant,timeout=10)
     def add(x, y):
         return x + y
 
-    @SimplyRedisServer.rpc
-    def delayed_count(n):
-        for i in range(n):
-            time.sleep(1)
-        return 42
-
-    @SimplyRedisServer.rpc
-    def hello(name):
-        return "hello, {}".format(name)
-
-
-def run_simple_test():
-    server = SimpleTest("redis://localhost:6379", 'test','mock')
-    server.run()
-
-def test_instant():
-    x = Process(target=run_simple_test)
-    x.start()
     c = SimplyRedisClient("redis://localhost:6379",'test','mock')
     assert c.call('add',[1,2],{}) == 3
-    assert c.call('hello',[],{'name':'simply'}) == b"hello, simply"
-    #assert c.call('delayed_count',[3], {},type='delayed') == 42
-    #assert c.call('delayed_count',[3], {},type='delayed') == 0
-    x.terminate()
-    #time.sleep(10)
+    server.stop()
 
 def test_delayed():
-    x = Process(target=run_simple_test)
+
+    def start_server():
+        server = SimplyRedisServer('localhost',6379, 'test', 'mock')
+        @server.rpc(type=Runtype.Delayed, timeout=15)
+        def countdown(x,callback):
+            for i in range(x):
+                time.sleep(0.2)
+                callback(progress=(i,x),message="running {}".format(i))
+            return "A missile is launched!"
+
+    x = threading.Thread(target=start_server, args=())
     x.start()
-    #time.sleep(1)
-    c = SimplyRedisClient("redis://localhost:6379",'test','mock')
-    assert c.call('delayed_count',[5], {},type='delayed') == 42
-    x.terminate()
 
-#connection = redis.from_url("redis://localhost:6379")
+    c = SimplyRedisClient("redis://localhost:6379", 'test', 'mock')
+    global_messsage_collection = []
 
-#while True:
-#    _,message = connection.blpop("syntelly_calls")
+    def client_callback(progress, message):
+        global_messsage_collection.append(f'progress = {progress}, message = {message}')
 
-    #print(message)
-#connection.mset({"Croatia": "Zagreb", "Bahamas": "Nassau"})
-#print(connection.get('Bahamas'))
+    result = c.call('countdown',[10],{},type='delayed',callback=client_callback)
+    messages = ("|".join(global_messsage_collection))
+    assert messages == "progress = [0, 10], message = running 0|progress = [1, 10], message = running 1|progress = [2, 10], message = running 2|progress = [3, 10], message = running 3|progress = [4, 10], message = running 4|progress = [5, 10], message = running 5|progress = [6, 10], message = running 6|progress = [7, 10], message = running 7|progress = [8, 10], message = running 8|progress = [9, 10], message = running 9"
+    assert result == "A missile is launched!"
+
+    #server.stop()
