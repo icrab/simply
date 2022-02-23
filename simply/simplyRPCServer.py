@@ -9,6 +9,8 @@ from enum import IntEnum
 import redis
 from functools import wraps
 import msgpack
+from platform import node
+from uuid import uuid4
 import zlib
 import traceback
 
@@ -36,6 +38,7 @@ class SimplyRedisServer():
         self.redis = redis.Redis(host=host, port=port, db=0,socket_keepalive=True,health_check_interval=10)
         #logging
         logging.basicConfig(format='%(asctime)s:%(levelname)s:%(message)s', level=get_logging_level(level))
+        self.unique_worker_name = f"{node()}_{uuid4()}"
         self.logger = logging.getLogger("{}:{}".format(name,plugin))
         self.host = host
         self.port = int(port)
@@ -64,7 +67,6 @@ class SimplyRedisServer():
             result = {"status": 'running', 'progress': progress, 'message': message,'id': task_id}
             self.redis.rpush("{}:general:{}".format(self.name, task_id), msgpack.packb(result, use_bin_type=True))
             self.redis.expire("{}:general:{}".format(self.name, task_id), self.results_shortlist_timeout)
-
             self.redis.set("{}:state:{}".format(self.name, task_id), msgpack.packb(result, use_bin_type=True),ex=self.results_longterm_timeout)
 
 
@@ -81,9 +83,11 @@ class SimplyRedisServer():
 
         queue = "{}:{}".format(self.name, self.plugin)
         processing = "{}:processing:{}".format(self.name, self.plugin)
+        self.redis.sadd(f"{self.name}:workers",f"{self.plugin}_{self.unique_worker_name}")
         while self.running:
             try:
                 self.redis.ping()
+                self.redis.set(f"{self.name}:health:{self.plugin}_{self.unique_worker_name}","alive",ex=1,nx=True)
                 self.logger.debug("ping was successful!")
                 message = self.redis.brpoplpush(queue, processing, 1)
             except:
@@ -105,9 +109,11 @@ class SimplyRedisServer():
                 if call['type'] == 'instant':
                     res = self.functions[fname](*call['args'], **call['kwargs'])
                     result.update({'status': 'ok', 'result': res, 'id': call['id']})
+
                 elif call['type'] == 'delayed':
                     task = call['id']
-
+                    self.redis.set(f"{task}_status","initiated")
+                    self.redis.set(f"{task}_worker", self.unique_worker_name)
                     progress_callback_with_id = types.FunctionType(_progress_callback.__code__, _progress_callback.__globals__, name=task,argdefs=(None,None,task),
                            closure=_progress_callback.__closure__)
 
@@ -122,10 +128,12 @@ class SimplyRedisServer():
                     result.update({'status': 'initiated', 'id': task})
 
                 elif call['type'] == 'cancel':
+                    task = call['id']
                     self.logger.debug("cancelling task {}".format(call['id']))
                     self.running_tasks[call['id']][1].cancel()
                     if self.running_tasks[call['id']][1].cancelled():
                         self.logger.debug("task {} is cancelled".format(call['id']))
+                        self.redis.set(f"{task}_status", "cancelled")
                         result = {'status': 'cancelled', 'id': self.running_tasks[call['id']]}
                         try:
                             self.redis.set("{}:state:{}".format(self.name, call['id']),
@@ -133,6 +141,7 @@ class SimplyRedisServer():
                             del self.running_tasks[call['id']]
                         except:
                             self.logger.critical("Fail during redis connect in 'cancel' operation")
+
             except Exception as e:
                 if 'id' in call:
                     task = call['id']
