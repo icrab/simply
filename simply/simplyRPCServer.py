@@ -118,12 +118,14 @@ class SimplyRedisServer():
             fname = call['method']
             try:
                 if call['type'] == 'instant':
+                    self.logger.debug("instant call")
                     res = self.functions[fname](
                         *call['args'], **call['kwargs'])
                     result.update(
                         {'status': 'ok', 'result': res, 'id': call['id']})
 
                 elif call['type'] == 'delayed':
+                    self.logger.debug("delayed call")
                     task = call['id']
                     self.redis.set(f"{task}_status", "initiated")
                     self.redis.set(f"{task}_worker", self.unique_worker_name)
