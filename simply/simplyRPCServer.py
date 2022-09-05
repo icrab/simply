@@ -130,23 +130,19 @@ class SimplyRedisServer():
                     task_id = call['id']
                     self.logger.info(f"delayed call, id: {task_id}")
                     # event needs for cancel running tasks
-                    try:
-                        task_event = Event()
-                        self.tasks_event[task_id] = task_event
+                    task_event = Event()
+                    self.tasks_event[task_id] = task_event
 
-                        self.redis.set(f"{task_id}_status", "initiated")
-                        self.redis.set(f"{task_id}_worker",
-                                       self.unique_worker_name)
-                        progress_callback_with_id = types.FunctionType(_progress_callback.__code__, _progress_callback.__globals__, name=task_id, argdefs=(None, None, task_id),
-                                                                       closure=_progress_callback.__closure__)
+                    self.redis.set(f"{task_id}_status", "initiated")
+                    self.redis.set(f"{task_id}_worker",
+                                   self.unique_worker_name)
+                    progress_callback_with_id = types.FunctionType(_progress_callback.__code__, _progress_callback.__globals__, name=task_id, argdefs=(None, None, task_id),
+                                                                   closure=_progress_callback.__closure__)
 
-                        done_callback_with_id = types.FunctionType(_done_callback.__code__, _done_callback.__globals__, name=task_id, argdefs=(None, task_id),
-                                                                   closure=_done_callback.__closure__)
-
-                        call['kwargs'].update(
-                            {'callback': progress_callback_with_id, 'event': task_event})
-                    except Exception as e:
-                        self.logger.info(e)
+                    done_callback_with_id = types.FunctionType(_done_callback.__code__, _done_callback.__globals__, name=task_id, argdefs=(None, task_id),
+                                                               closure=_done_callback.__closure__)
+                    call['kwargs'].update(
+                        {'callback': progress_callback_with_id, 'event': task_event})
 
                     future = self.pool.submit(
                         self.functions[fname], *call['args'], **call['kwargs'])
@@ -157,13 +153,13 @@ class SimplyRedisServer():
 
                 elif call['type'] == 'cancel':
                     task_id = call['id']
-                    task_id = self.running_tasks[task_id]
+                    task = self.running_tasks[task_id]
                     event = self.tasks_event[task_id]
                     self.logger.info("cancelling task {}".format(task_id))
                     self.logger.info(f'running tasks: {self.running_tasks}')
                     self.logger.info(
-                        f'current task: {task_id}')
-                    was_cancelled = task_id.cancel()
+                        f'current task: {task}')
+                    was_cancelled = task.cancel()
                     self.logger.info(
                         f'was cancelled {was_cancelled}')
                     event.set()
@@ -185,11 +181,11 @@ class SimplyRedisServer():
 
             except Exception as e:
                 if 'id' in call:
-                    task_id = call['id']
+                    task = call['id']
                 else:
-                    task_id = None
+                    task = None
                 result.update(
-                    {'status': 'error', 'type': type(e).__name__, 'id': task_id, 'exception': traceback.format_exc()})
+                    {'status': 'error', 'type': type(e).__name__, 'id': task, 'exception': traceback.format_exc()})
 
             try:
                 self.redis.publish("{}:general:{}".format(self.name, call['id']),
