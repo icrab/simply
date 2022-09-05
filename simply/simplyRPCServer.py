@@ -147,6 +147,9 @@ class SimplyRedisServer():
                 elif call['type'] == 'cancel':
                     task = call['id']
                     self.logger.info("cancelling task {}".format(call['id']))
+                    self.logger.info(f'running tasks: {self.running_tasks}')
+                    self.logger.info(
+                        f'current task: {self.running_tasks[call["id"]][1]}')
                     self.running_tasks[call['id']][1].cancel()
                     if self.running_tasks[call['id']][1].cancelled():
                         self.logger.info(
