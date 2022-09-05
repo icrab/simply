@@ -107,13 +107,13 @@ class SimplyRedisServer():
 
             if not message:
                 continue
-            self.logger.info("Message: {}".format(message))
+            self.logger.debug("Message: {}".format(message))
             head = message[:4]
             if head == b'zlib':
                 self.logger.debug('Zlib message')
                 message = zlib.decompress(message[4:])
             call = msgpack.unpackb(message, raw=False)
-            self.logger.info("new message {}".format(message))
+            self.logger.debug("new message {}".format(message))
             result = {}
             fname = call['method']
             try:
