@@ -69,7 +69,6 @@ class SimplyRedisServer():
                       'message': message, 'id': task_id}
             self.redis.publish("{}:general:{}".format(
                 self.name, task_id), msgpack.packb(result, use_bin_type=True))
-            #self.redis.expire("{}:general:{}".format(self.name, task_id), self.results_shortlist_timeout)
             self.redis.set("{}:state:{}".format(self.name, task_id), msgpack.packb(
                 result, use_bin_type=True), ex=self.results_longterm_timeout)
 
@@ -83,7 +82,6 @@ class SimplyRedisServer():
 
             self.redis.publish("{}:general:{}".format(
                 self.name, task_id), msgpack.packb(result, use_bin_type=True))
-            #self.redis.expire("{}:general:{}".format(self.name, task_id), self.results_shortlist_timeout)
 
             self.redis.set("{}:state:{}".format(self.name, task_id), msgpack.packb(
                 result, use_bin_type=True), ex=self.results_longterm_timeout)
@@ -97,7 +95,7 @@ class SimplyRedisServer():
                 self.redis.ping()
                 self.redis.set(
                     f"{self.name}:health:{self.plugin}_{self.unique_worker_name}", "alive", ex=1, nx=True)
-                self.logger.debug("ping was successful!")
+                #self.logger.debug("ping was successful!")
                 message = self.redis.brpoplpush(queue, processing, 1)
             except:
                 time.sleep(1)
@@ -107,13 +105,13 @@ class SimplyRedisServer():
 
             if not message:
                 continue
-            self.logger.debug("Message: {}".format(message))
+            #self.logger.debug("Message: {}".format(message))
             head = message[:4]
             if head == b'zlib':
-                self.logger.debug('Zlib message')
+                #self.logger.debug('Zlib message')
                 message = zlib.decompress(message[4:])
             call = msgpack.unpackb(message, raw=False)
-            self.logger.debug("new message {}".format(message))
+            #self.logger.debug("new message {}".format(message))
             result = {}
             fname = call['method']
             try:
@@ -173,7 +171,6 @@ class SimplyRedisServer():
             try:
                 self.redis.publish("{}:general:{}".format(self.name, call['id']),
                                    msgpack.packb(result, use_bin_type=True))
-                #self.redis.expire("{}:general:{}".format(self.name, call['id']), self.results_shortlist_timeout)
             except:
                 time.sleep(1)
                 self.logger.critical(
