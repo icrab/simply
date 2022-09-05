@@ -146,7 +146,7 @@ class SimplyRedisServer():
                         call['kwargs'].update(
                             {'callback': progress_callback_with_id, 'event': task_event})
                     except Exception as e:
-                        print(e)
+                        self.logger.info(e)
 
                     future = self.pool.submit(
                         self.functions[fname], *call['args'], **call['kwargs'])
