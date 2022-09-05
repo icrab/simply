@@ -175,6 +175,7 @@ class SimplyRedisServer():
                             self.redis.set("{}:state:{}".format(self.name, task_id),
                                            msgpack.packb(result, use_bin_type=True), ex=self.results_longterm_timeout)
                             del self.running_tasks[task_id]
+                            del self.tasks_event[task_id]
                         except:
                             self.logger.critical(
                                 "Fail during redis connect in 'cancel' operation")
