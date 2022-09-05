@@ -149,13 +149,14 @@ class SimplyRedisServer():
                     self.logger.info("cancelling task {}".format(task_id))
                     self.logger.info(f'running tasks: {self.running_tasks}')
                     try:
+                        task = self.running_tasks.get(task_id)
                         self.logger.info(
-                            f'current task: {self.running_tasks[task_id]}')
-                        was_cancelled = self.running_tasks[task_id].cancel()
+                            f'current task: {task}')
+                        was_cancelled = task.cancel()
                         self.logger.info(
                             f'was cancelled {was_cancelled}')
                     except Exception as e:
-                        self.logger.info(e)
+                        self.logger.info('error', e)
 
                     if self.running_tasks[task_id].cancelled():
                         self.logger.info(
