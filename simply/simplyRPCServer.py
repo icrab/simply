@@ -97,7 +97,7 @@ class SimplyRedisServer():
                 self.redis.ping()
                 self.redis.set(
                     f"{self.name}:health:{self.plugin}_{self.unique_worker_name}", "alive", ex=1, nx=True)
-                #self.logger.debug("ping was successful!")
+                self.logger.debug("ping was successful!")
                 message = self.redis.brpoplpush(queue, processing, 1)
             except:
                 time.sleep(1)
@@ -107,25 +107,25 @@ class SimplyRedisServer():
 
             if not message:
                 continue
-            #self.logger.debug("Message: {}".format(message))
+            self.logger.info("Message: {}".format(message))
             head = message[:4]
             if head == b'zlib':
-                #self.logger.debug('Zlib message')
+                self.logger.debug('Zlib message')
                 message = zlib.decompress(message[4:])
             call = msgpack.unpackb(message, raw=False)
-            #self.logger.debug("new message {}".format(message))
+            self.logger.info("new message {}".format(message))
             result = {}
             fname = call['method']
             try:
                 if call['type'] == 'instant':
-                    self.logger.debug("instant call")
+                    self.logger.info("instant call")
                     res = self.functions[fname](
                         *call['args'], **call['kwargs'])
                     result.update(
                         {'status': 'ok', 'result': res, 'id': call['id']})
 
                 elif call['type'] == 'delayed':
-                    self.logger.debug("delayed call")
+                    self.logger.info("delayed call")
                     task = call['id']
                     self.redis.set(f"{task}_status", "initiated")
                     self.redis.set(f"{task}_worker", self.unique_worker_name)
@@ -146,10 +146,10 @@ class SimplyRedisServer():
 
                 elif call['type'] == 'cancel':
                     task = call['id']
-                    self.logger.debug("cancelling task {}".format(call['id']))
+                    self.logger.info("cancelling task {}".format(call['id']))
                     self.running_tasks[call['id']][1].cancel()
                     if self.running_tasks[call['id']][1].cancelled():
-                        self.logger.debug(
+                        self.logger.info(
                             "task {} is cancelled".format(call['id']))
                         self.redis.set(f"{task}_status", "cancelled")
                         result = {'status': 'cancelled',
