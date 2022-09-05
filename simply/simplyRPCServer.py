@@ -130,19 +130,23 @@ class SimplyRedisServer():
                     task_id = call['id']
                     self.logger.info(f"delayed call, id: {task_id}")
                     # event needs for cancel running tasks
-                    task_event = Event()
-                    self.tasks_event[task_id] = task_event
+                    try:
+                        task_event = Event()
+                        self.tasks_event[task_id] = task_event
 
-                    self.redis.set(f"{task_id}_status", "initiated")
-                    self.redis.set(f"{task_id}_worker",
-                                   self.unique_worker_name)
-                    progress_callback_with_id = types.FunctionType(_progress_callback.__code__, _progress_callback.__globals__, name=task_id, argdefs=(None, None, task_id),
-                                                                   closure=_progress_callback.__closure__)
+                        self.redis.set(f"{task_id}_status", "initiated")
+                        self.redis.set(f"{task_id}_worker",
+                                       self.unique_worker_name)
+                        progress_callback_with_id = types.FunctionType(_progress_callback.__code__, _progress_callback.__globals__, name=task_id, argdefs=(None, None, task_id),
+                                                                       closure=_progress_callback.__closure__)
 
-                    done_callback_with_id = types.FunctionType(_done_callback.__code__, _done_callback.__globals__, name=task_id, argdefs=(None, task_id),
-                                                               closure=_done_callback.__closure__)
-                    call['kwargs'].update(
-                        {'callback': progress_callback_with_id, 'event': task_event})
+                        done_callback_with_id = types.FunctionType(_done_callback.__code__, _done_callback.__globals__, name=task_id, argdefs=(None, task_id),
+                                                                   closure=_done_callback.__closure__)
+
+                        call['kwargs'].update(
+                            {'callback': progress_callback_with_id, 'event': task_event})
+                    except Exception as e:
+                        print(e)
 
                     future = self.pool.submit(
                         self.functions[fname], *call['args'], **call['kwargs'])
