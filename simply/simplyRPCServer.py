@@ -71,7 +71,6 @@ class SimplyRedisServer():
                       'message': message, 'id': task_id}
             self.redis.publish("{}:general:{}".format(
                 self.name, task_id), msgpack.packb(result, use_bin_type=True))
-            #self.redis.expire("{}:general:{}".format(self.name, task_id), self.results_shortlist_timeout)
             self.redis.set("{}:state:{}".format(self.name, task_id), msgpack.packb(
                 result, use_bin_type=True), ex=self.results_longterm_timeout)
 
@@ -85,7 +84,6 @@ class SimplyRedisServer():
 
             self.redis.publish("{}:general:{}".format(
                 self.name, task_id), msgpack.packb(result, use_bin_type=True))
-            #self.redis.expire("{}:general:{}".format(self.name, task_id), self.results_shortlist_timeout)
 
             self.redis.set("{}:state:{}".format(self.name, task_id), msgpack.packb(
                 result, use_bin_type=True), ex=self.results_longterm_timeout)
@@ -190,7 +188,6 @@ class SimplyRedisServer():
             try:
                 self.redis.publish("{}:general:{}".format(self.name, call['id']),
                                    msgpack.packb(result, use_bin_type=True))
-                #self.redis.expire("{}:general:{}".format(self.name, call['id']), self.results_shortlist_timeout)
             except:
                 time.sleep(1)
                 self.logger.critical(
