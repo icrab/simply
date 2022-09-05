@@ -145,22 +145,22 @@ class SimplyRedisServer():
                     result.update({'status': 'initiated', 'id': task})
 
                 elif call['type'] == 'cancel':
-                    task = call['id']
-                    self.logger.info("cancelling task {}".format(call['id']))
+                    task_id = call['id']
+                    self.logger.info("cancelling task {}".format(task_id))
                     self.logger.info(f'running tasks: {self.running_tasks}')
                     self.logger.info(
-                        f'current task: {self.running_tasks[call["id"]][1]}')
-                    self.running_tasks[call['id']][1].cancel()
-                    if self.running_tasks[call['id']][1].cancelled():
+                        f'current task: {self.running_tasks[task_id]}')
+                    self.running_tasks[task_id].cancel()
+                    if self.running_tasks[task_id].cancelled():
                         self.logger.info(
-                            "task {} is cancelled".format(call['id']))
-                        self.redis.set(f"{task}_status", "cancelled")
+                            "task {} is cancelled".format(task_id))
+                        self.redis.set(f"{task_id}_status", "cancelled")
                         result = {'status': 'cancelled',
-                                  'id': self.running_tasks[call['id']]}
+                                  'id': self.running_tasks[task_id]}
                         try:
-                            self.redis.set("{}:state:{}".format(self.name, call['id']),
+                            self.redis.set("{}:state:{}".format(self.name, task_id),
                                            msgpack.packb(result, use_bin_type=True), ex=self.results_longterm_timeout)
-                            del self.running_tasks[call['id']]
+                            del self.running_tasks[task_id]
                         except:
                             self.logger.critical(
                                 "Fail during redis connect in 'cancel' operation")
