@@ -3,6 +3,7 @@ import threading
 import time
 import types
 from concurrent.futures import ThreadPoolExecutor
+from threading import Event
 from enum import IntEnum
 import redis
 import msgpack
@@ -31,6 +32,7 @@ class SimplyRedisServer():
     predefined_kwargs = {}  # Dict with parameters from the decorator
     timeouts = {}
     running_tasks = {}
+    tasks_event = {}
     inverse_running_tasks = {}
     pool = ThreadPoolExecutor()
 
@@ -127,6 +129,10 @@ class SimplyRedisServer():
                 elif call['type'] == 'delayed':
                     self.logger.info("delayed call")
                     task = call['id']
+                    # event needs for cancel running tasks
+                    task_event = Event()
+                    self.tasks_event[task] = task_event
+
                     self.redis.set(f"{task}_status", "initiated")
                     self.redis.set(f"{task}_worker", self.unique_worker_name)
                     progress_callback_with_id = types.FunctionType(_progress_callback.__code__, _progress_callback.__globals__, name=task, argdefs=(None, None, task),
@@ -135,7 +141,7 @@ class SimplyRedisServer():
                     done_callback_with_id = types.FunctionType(_done_callback.__code__, _done_callback.__globals__, name=task, argdefs=(None, task),
                                                                closure=_done_callback.__closure__)
                     call['kwargs'].update(
-                        {'callback': progress_callback_with_id})
+                        {'callback': progress_callback_with_id, 'event': task_event})
 
                     future = self.pool.submit(
                         self.functions[fname], *call['args'], **call['kwargs'])
@@ -146,19 +152,19 @@ class SimplyRedisServer():
 
                 elif call['type'] == 'cancel':
                     task_id = call['id']
+                    task = self.running_tasks[task_id]
+                    event = self.tasks_event[task_id]
                     self.logger.info("cancelling task {}".format(task_id))
                     self.logger.info(f'running tasks: {self.running_tasks}')
-                    try:
-                        task = self.running_tasks.get(task_id)
-                        self.logger.info(
-                            f'current task: {task}')
-                        was_cancelled = task.cancel()
-                        self.logger.info(
-                            f'was cancelled {was_cancelled}')
-                    except Exception as e:
-                        self.logger.info('error', e)
+                    self.logger.info(
+                        f'current task: {task}')
+                    was_cancelled = task.cancel()
+                    self.logger.info(
+                        f'was cancelled {was_cancelled}')
+                    event.set()
 
-                    if self.running_tasks[task_id].cancelled():
+                    if (self.running_tasks[task_id].cancelled() or
+                            event.is_set()):
                         self.logger.info(
                             "task {} is cancelled".format(task_id))
                         self.redis.set(f"{task_id}_status", "cancelled")
