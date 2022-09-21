@@ -119,7 +119,7 @@ class SimplyRedisServer():
                     self.logger.debug("instant call")
                     res = self.functions[fname](
                         *call['args'], **call['kwargs'])
-                    self.logger.debug("instant call res", res)
+                    self.logger.debug(f"instant call res {res}")
                     result.update(
                         {'status': 'ok', 'result': res, 'id': call['id']})
 
@@ -162,7 +162,7 @@ class SimplyRedisServer():
                                 "Fail during redis connect in 'cancel' operation")
 
             except Exception as e:
-                self.logger.debug('EXCEPTION', e)
+                self.logger.debug(f'EXCEPTION {e}')
                 if 'id' in call:
                     task = call['id']
                 else:
