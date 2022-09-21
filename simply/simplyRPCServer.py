@@ -171,6 +171,7 @@ class SimplyRedisServer():
                     {'status': 'error', 'type': type(e).__name__, 'id': task, 'exception': traceback.format_exc()})
 
             try:
+                self.logger.debug(f'PUBLISH {self.name} {call["id"]}')
                 self.redis.publish("{}:general:{}".format(self.name, call['id']),
                                    msgpack.packb(result, use_bin_type=True))
             except:
