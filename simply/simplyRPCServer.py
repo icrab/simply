@@ -119,7 +119,7 @@ class SimplyRedisServer():
                     self.logger.debug("instant call")
                     res = self.functions[fname](
                         *call['args'], **call['kwargs'])
-                    self.logger.debug(f"instant call res {res}")
+                    self.logger.debug("instant call res")
                     result.update(
                         {'status': 'ok', 'result': res, 'id': call['id']})
 
