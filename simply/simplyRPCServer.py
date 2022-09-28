@@ -50,6 +50,8 @@ class SimplyRedisServer():
         self.results_shortlist_timeout = results_shortlist_timeout
         self.results_longterm_timeout = results_longterm_timeout
         self.running = True
+        self.redis.set(
+            f"{self.name}:counter:{self.plugin}_{self.unique_worker_name}", 0)
         self._loop = threading.Thread(target=self._run)
         self._loop.start()
 
@@ -94,10 +96,12 @@ class SimplyRedisServer():
             try:
                 self.redis.ping()
                 self.redis.set(
-                    f"{self.name}:health:{self.plugin}_{self.unique_worker_name}", "alive", ex=1, nx=True)
+                    f"{self.name}:health:{self.plugin}_{self.unique_worker_name}", 1, ex=1, nx=True)
                 #self.logger.debug("ping was successful!")
                 message = self.redis.brpoplpush(queue, processing, 1)
             except:
+                self.redis.set(
+                    f"{self.name}:health:{self.plugin}_{self.unique_worker_name}", 0, ex=1, nx=True)
                 time.sleep(1)
                 self.logger.critical(
                     "Connection to Redis failed on reading, trying to reconnect")
@@ -117,6 +121,8 @@ class SimplyRedisServer():
             try:
                 if call['type'] == 'instant':
                     self.logger.debug("instant call")
+                    self.redis.incr(
+                        f"{self.name}:counter:{self.plugin}_{self.unique_worker_name}")
                     res = self.functions[fname](
                         *call['args'], **call['kwargs'])
                     self.logger.debug("instant call res")
@@ -125,6 +131,8 @@ class SimplyRedisServer():
 
                 elif call['type'] == 'delayed':
                     self.logger.debug("delayed call")
+                    self.redis.incr(
+                        f"{self.name}:counter:{self.plugin}_{self.unique_worker_name}")
                     task = call['id']
                     self.redis.set(f"{task}_status", "initiated")
                     self.redis.set(f"{task}_worker", self.unique_worker_name)
