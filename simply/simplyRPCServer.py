@@ -50,12 +50,16 @@ class SimplyRedisServer():
         self.results_shortlist_timeout = results_shortlist_timeout
         self.results_longterm_timeout = results_longterm_timeout
         self.running = True
-        # clear old counter
-        self.redis.delete(f"{self.name}:counter:{self.plugin}*")
-        self.redis.set(
-            f"{self.name}:counter:{self.plugin}_{self.unique_worker_name}", 0)
+        self.__init_counter()
         self._loop = threading.Thread(target=self._run)
         self._loop.start()
+
+    def __init_counter(self):
+        # clear old counter
+        old_keys = self.redis.keys(f"{self.name}:counter:{self.plugin}*")
+        map(lambda old_key: self.redis.delete(old_key), old_keys)
+        self.redis.set(
+            f"{self.name}:counter:{self.plugin}_{self.unique_worker_name}", 0)
 
     def rpc(self, *args, **kwargs):
         def wrapper(f):
