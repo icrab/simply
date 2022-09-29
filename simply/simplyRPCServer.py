@@ -50,6 +50,8 @@ class SimplyRedisServer():
         self.results_shortlist_timeout = results_shortlist_timeout
         self.results_longterm_timeout = results_longterm_timeout
         self.running = True
+        # clear old counter
+        self.redis.delete(f"{self.name}:counter:{self.plugin}*")
         self.redis.set(
             f"{self.name}:counter:{self.plugin}_{self.unique_worker_name}", 0)
         self._loop = threading.Thread(target=self._run)
