@@ -59,7 +59,9 @@ class SimplyRedisServer():
     def __init_counter(self):
         # clear old counter
         old_keys = self.redis.keys(f"{self.name}:counter:{self.plugin}*")
-        map(lambda old_key: self.redis.delete(old_key), old_keys)
+        for old_key in old_keys:
+            self.redis.delete(old_key)
+
         self.redis.set(
             f"{self.name}:counter:{self.plugin}_{self.unique_worker_name}", 0)
 
