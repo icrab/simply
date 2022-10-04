@@ -88,6 +88,8 @@ class SimplyRedisServer():
             try:
                 result = {"status": 'ok', 'result': future.result(),
                           'id': task_id}
+                self.redis.incr(
+                    f"{self.name}:counter:{self.plugin}_{self.unique_worker_name}")
             except Exception as e:
                 result = {'status': 'error', 'type': type(
                     e).__name__, 'id': task_id, 'exception': traceback.format_exc()}
@@ -131,18 +133,16 @@ class SimplyRedisServer():
             try:
                 if call['type'] == 'instant':
                     self.logger.info("instant call")
-                    self.redis.incr(
-                        f"{self.name}:counter:{self.plugin}_{self.unique_worker_name}")
                     res = self.functions[fname](
                         *call['args'], **call['kwargs'])
                     result.update(
                         {'status': 'ok', 'result': res, 'id': call['id']})
+                    self.redis.incr(
+                        f"{self.name}:counter:{self.plugin}_{self.unique_worker_name}")
 
                 elif call['type'] == 'delayed':
                     task_id = call['id']
                     self.logger.info(f"delayed call, id: {task_id}")
-                    self.redis.incr(
-                        f"{self.name}:counter:{self.plugin}_{self.unique_worker_name}")
                     # event needs for cancel running tasks
                     task_event = Event()
                     self.tasks_event[task_id] = task_event
