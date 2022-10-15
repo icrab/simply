@@ -190,8 +190,10 @@ class SimplyRedisServer():
                 self.logger.debug(f'PUBLISH {self.name} {call["id"]}')
                 self.redis.publish("{}:general:{}".format(self.name, call['id']),
                                    msgpack.packb(result, use_bin_type=True))
-            except:
+            except Exception as e:
                 time.sleep(1)
+                self.logger.critical(
+                    "ERROR", str(e))
                 self.logger.critical(
                     "Connection to Redis failed during writing, trying to reconnect")
 
