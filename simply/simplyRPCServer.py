@@ -36,10 +36,10 @@ class SimplyRedisServer():
     inverse_running_tasks = {}
     pool = ThreadPoolExecutor()
 
-    def __init__(self, host, port, name, plugin, level='warning', results_shortlist_timeout=30, results_longterm_timeout=259200):
+    def __init__(self, host, port, name, plugin, level='warning', results_shortlist_timeout=30, results_longterm_timeout=600):
         #logger = logging.getLogger('simply_{}_{}'.format(name,plugin))
-        self.redis = redis.Redis(
-            host=host, port=port, db=0, socket_keepalive=True, health_check_interval=10)
+        # socket_keepalive=True, health_check_interval=10
+        self.redis = redis.Redis(host=host, port=port, db=0)
         # logging
         logging.basicConfig(
             format='%(asctime)s:%(levelname)s:%(message)s', level=get_logging_level(level))
