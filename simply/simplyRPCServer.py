@@ -109,8 +109,8 @@ class SimplyRedisServer():
                     f"{self.name}:health:{self.plugin}_{self.unique_worker_name}", 1, ex=1, nx=True)
                 #self.logger.debug("ping was successful!")
                 message = self.redis.brpoplpush(queue, processing, 1)
-                self.logger.debug(F'QUEUE-PROCESSING: {queue}, {processing}')
-                self.logger.debug(F'MESSAGE: {message}')
+                self.logger.debug(f'QUEUE-PROCESSING: {queue}, {processing}')
+                self.logger.debug(f'MESSAGE: {message}')
             except:
                 self.redis.set(
                     f"{self.name}:health:{self.plugin}_{self.unique_worker_name}", 0, ex=1, nx=True)
