@@ -37,9 +37,11 @@ class SimplyRedisServer():
     pool = ThreadPoolExecutor()
 
     def __init__(self, host, port, name, plugin, level='warning', results_shortlist_timeout=30, results_longterm_timeout=600):
-        #logger = logging.getLogger('simply_{}_{}'.format(name,plugin))
+        # logger = logging.getLogger('simply_{}_{}'.format(name,plugin))
         # socket_keepalive=True, health_check_interval=10
-        self.redis = redis.Redis(host=host, port=port, db=0)
+        redis_pool = redis.ConnectionPool(host=host, port=port, db=0)
+        self.redis = redis.Redis(
+            connection_pool=redis_pool, max_connections=10)
         # logging
         logging.basicConfig(
             format='%(asctime)s:%(levelname)s:%(message)s', level=get_logging_level(level))
@@ -207,7 +209,7 @@ class SimplyRedisServer():
                     {'status': 'error', 'type': type(e).__name__, 'id': task, 'exception': traceback.format_exc()})
 
             try:
-                #self.logger.debug(f'PUBLISH {self.name} {call["id"]}')
+                # self.logger.debug(f'PUBLISH {self.name} {call["id"]}')
                 self.redis.publish("{}:general:{}".format(self.name, call['id']),
                                    msgpack.packb(result, use_bin_type=True))
             except Exception as e:
