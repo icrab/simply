@@ -1,3 +1,4 @@
+import datetime
 import logging
 import threading
 import time
@@ -39,9 +40,9 @@ class SimplyRedisServer():
     def __init__(self, host, port, name, plugin, level='warning', results_shortlist_timeout=30, results_longterm_timeout=600):
         # logger = logging.getLogger('simply_{}_{}'.format(name,plugin))
         # socket_keepalive=True, health_check_interval=10
-        redis_pool = redis.ConnectionPool(host=host, port=port, db=0)
+        self.redis_pool = redis.ConnectionPool(host=host, port=port, db=0)
         self.redis = redis.Redis(
-            connection_pool=redis_pool, max_connections=10)
+            connection_pool=self.redis_pool, max_connections=10)
         # logging
         logging.basicConfig(
             format='%(asctime)s:%(levelname)s:%(message)s', level=get_logging_level(level))
@@ -54,6 +55,7 @@ class SimplyRedisServer():
         self.results_shortlist_timeout = results_shortlist_timeout
         self.results_longterm_timeout = results_longterm_timeout
         self.running = True
+        self.last_connect_time = datetime.datetime.now()
         self.__init_counter()
         self._loop = threading.Thread(target=self._run)
         self._loop.start()
@@ -66,6 +68,14 @@ class SimplyRedisServer():
 
         self.redis.set(
             f"{self.name}:counter:{self.plugin}_{self.unique_worker_name}", 0)
+
+    def reconnect_by_time(self):
+        current_time = datetime.datetime.now()
+        difference = current_time - self.last_connect_time
+
+        if difference.seconds > 3600:
+            self.redis_pool.disconnect()
+            self.last_connect_time = current_time
 
     def rpc(self, *args, **kwargs):
         def wrapper(f):
@@ -111,16 +121,18 @@ class SimplyRedisServer():
         while self.running:
             try:
                 self.redis.ping()
+                self.reconnect_by_time()
                 self.redis.set(
                     f"{self.name}:health:{self.plugin}_{self.unique_worker_name}", 1, ex=1, nx=True)
                 self.logger.debug("ping was successful!")
                 message = self.redis.brpoplpush(queue, processing, 1)
                 self.logger.debug(f'QUEUE-PROCESSING: {queue}, {processing}')
                 self.logger.debug(f'MESSAGE: {message}')
-            except:
+            except Exception as e:
                 self.redis.set(
                     f"{self.name}:health:{self.plugin}_{self.unique_worker_name}", 0, ex=1, nx=True)
                 time.sleep(1)
+                self.logger.critical(str(e))
                 self.logger.critical(
                     "Connection to Redis failed on reading, trying to reconnect")
                 continue
