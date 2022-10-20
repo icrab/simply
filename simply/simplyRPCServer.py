@@ -71,7 +71,7 @@ class SimplyRedisServer():
         current_time = datetime.datetime.now()
         difference = current_time - self.last_connect_time
 
-        if difference.seconds > 3600:
+        if difference.seconds > 10:
             self.redis_pool.disconnect()
             self.last_connect_time = current_time
 
