@@ -117,7 +117,7 @@ class SimplyRedisServer():
         while self.running:
             try:
                 self.redis.ping()
-                # self.reconnect_by_time()
+                self.reconnect_by_time()
                 self.redis.set(
                     f"{self.name}:health:{self.plugin}_{self.unique_worker_name}", 1, ex=1, nx=True)
                 #self.logger.debug("ping was successful!")
