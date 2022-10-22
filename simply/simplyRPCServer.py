@@ -42,7 +42,7 @@ class SimplyRedisServer():
         # socket_keepalive=True, health_check_interval=10
         self.redis_pool = redis.ConnectionPool(host=host, port=port, db=0)
         self.redis = redis.Redis(
-            connection_pool=self.redis_pool, max_connections=10)
+            connection_pool=self.redis_pool, max_connections=10, socket_timeout=30, socket_keepalive=True, health_check_interval=20, retry_on_timeout=True, retry_on_error=True)
         # logging
         logging.basicConfig(
             format='%(asctime)s:%(levelname)s:%(message)s', level=get_logging_level(level))
