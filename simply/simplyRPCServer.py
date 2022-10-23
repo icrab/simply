@@ -82,7 +82,7 @@ class SimplyRedisServer():
             self.functions[format(f.__name__)] = f
             self.predefined_kwargs[format(f.__name__)] = kwargs
             self.timeouts[format(
-                f.__name__)] = kwargs['timeout'] if 'timeout' in kwargs else -1
+                f.__name__)] = kwargs['timeout'] if 'timeout' in kwargs else 600
             return wrapper
         return wrapper
 
