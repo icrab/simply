@@ -54,7 +54,7 @@ class SimplyRedisServer():
         self.running = True
         self.__init_counter()
         self.last_connect_time = datetime.datetime.now()
-        self._loop = threading.Thread(target=self._run, daemon=True)
+        self._loop = threading.Thread(target=self._run)
         self._loop.start()
 
     def __init_counter(self):
