@@ -54,6 +54,8 @@ class SimplyRedisServer():
         self.running = True
         self.__init_counter()
         self.last_connect_time = datetime.datetime.now()
+
+        threading.excepthook = self.except_hook
         self._loop = threading.Thread(target=self._run)
         self._loop.start()
 
@@ -65,6 +67,10 @@ class SimplyRedisServer():
 
         self.redis.set(
             f"{self.name}:counter:{self.plugin}_{self.unique_worker_name}", 0)
+
+    def custom_hook(args):
+        # report the failure
+        print(f'Thread failed: {args.exc_value}')
 
     def reconnect_by_time(self):
         current_time = datetime.datetime.now()
