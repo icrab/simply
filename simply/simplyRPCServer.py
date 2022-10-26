@@ -68,7 +68,7 @@ class SimplyRedisServer():
         self.redis.set(
             f"{self.name}:counter:{self.plugin}_{self.unique_worker_name}", 0)
 
-    def custom_hook(args):
+    def except_hook(args):
         # report the failure
         print(f'Thread failed: {args.exc_value}')
 
