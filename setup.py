@@ -12,6 +12,7 @@ setup(name='simply',
           'msgpack',
           'pebble',
           'redis',
+          'multiprocess',
           'envs'
       ]
      )

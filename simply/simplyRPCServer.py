@@ -3,8 +3,9 @@ import logging
 import threading
 import time
 import types
-from concurrent.futures import ThreadPoolExecutor
+from pebble import ProcessPool, concurrent
 from threading import Event
+import multiprocess
 from enum import IntEnum
 import redis
 import msgpack
@@ -12,7 +13,6 @@ from platform import node
 from uuid import uuid4
 import zlib
 import traceback
-
 
 def get_logging_level(level):
     return {'debug': logging.DEBUG, 'info': logging.INFO, 'warning': logging.WARNING, 'error': logging.ERROR, 'critical': logging.CRITICAL}[level.lower()]
@@ -35,7 +35,7 @@ class SimplyRedisServer():
     running_tasks = {}
     tasks_event = {}
     inverse_running_tasks = {}
-    pool = ThreadPoolExecutor()
+    pool = ProcessPool(context=multiprocess.get_context())
 
     def __init__(self, host, port, name, plugin, level='warning', results_shortlist_timeout=30, results_longterm_timeout=600):
         #logger = logging.getLogger('simply_{}_{}'.format(name,plugin))
@@ -57,8 +57,9 @@ class SimplyRedisServer():
         self.running = True
         self.__init_counter()
         self.last_connect_time = datetime.datetime.now()
-        self._loop = threading.Thread(target=self._run)
-        self._loop.start()
+        # self._run()
+        # self._loop = threading.Thread(target=self._run)
+        # self._loop.start()
 
     def __init_counter(self):
         # clear old counter
@@ -86,7 +87,7 @@ class SimplyRedisServer():
             return wrapper
         return wrapper
 
-    def _run(self):
+    def run(self):
 
         def _progress_callback(progress=None, message=None, task_id=None):
             result = {"status": 'running', 'progress': progress,
@@ -171,10 +172,9 @@ class SimplyRedisServer():
                     done_callback_with_id = types.FunctionType(_done_callback.__code__, _done_callback.__globals__, name=task_id, argdefs=(None, task_id),
                                                                closure=_done_callback.__closure__)
                     call['kwargs'].update(
-                        {'callback': progress_callback_with_id, 'event': task_event})
-
-                    future = self.pool.submit(
-                        self.functions[fname], *call['args'], **call['kwargs'])
+                        {'callback': progress_callback_with_id})
+                    future = self.pool.schedule(
+                        self.functions[fname], args = call['args'], kwargs=call['kwargs'])
                     future.add_done_callback(done_callback_with_id)
                     self.running_tasks[task_id] = future
                     self.inverse_running_tasks[future] = task_id
@@ -183,7 +183,6 @@ class SimplyRedisServer():
                 elif call['type'] == 'cancel':
                     task_id = call['id']
                     task = self.running_tasks[task_id]
-                    event = self.tasks_event[task_id]
                     self.logger.info("cancelling task {}".format(task_id))
                     self.logger.info(f'running tasks: {self.running_tasks}')
                     self.logger.info(
@@ -191,10 +190,7 @@ class SimplyRedisServer():
                     was_cancelled = task.cancel()
                     self.logger.info(
                         f'was cancelled {was_cancelled}')
-                    event.set()
-
-                    if (self.running_tasks[task_id].cancelled() or
-                            event.is_set()):
+                    if (self.running_tasks[task_id].cancelled()):
                         self.logger.info(
                             "task {} is cancelled".format(task_id))
                         self.redis.set(f"{task_id}_status", "cancelled")
@@ -225,7 +221,3 @@ class SimplyRedisServer():
                 self.logger.critical(f'ERROR": {str(e)}')
                 self.logger.critical(
                     "Connection to Redis failed during writing, trying to reconnect")
-
-    def stop(self):
-        self.running = False
-        self._loop.join()

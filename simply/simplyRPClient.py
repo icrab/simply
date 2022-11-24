@@ -1,3 +1,4 @@
+import time
 import uuid
 import msgpack
 import redis
@@ -26,6 +27,7 @@ class SimplyRedisClient():
         self.redis = redis.from_url(url)
         self.name = name
         self.plugin = plugin
+        self.pubsub = self.redis.pubsub()
 
     def call(self, function, args, kwargs, type='instant', callback=None):
         if type == 'instant' and callback:
@@ -35,12 +37,19 @@ class SimplyRedisClient():
         idx = str(uuid.uuid4())
         run = {'method': function, 'type': type,
                'args': args, 'kwargs': kwargs, 'id': idx}
+        self.pubsub.subscribe("{}:general:{}".format(self.name, idx))
         self.redis.rpush('{}:{}'.format(self.name, self.plugin),
                          msgpack.packb(run, use_bin_type=True))
         if type == 'instant':
             # Instant requests
-            res = msgpack.unpackb(self.redis.blpop(
-                '{}:general:{}'.format(self.name, idx))[1], raw=False)
+            for message in self.pubsub.listen():
+                if message['type'] == 'message':
+                    self.pubsub.unsubscribe(idx)
+                    res =  msgpack.unpackb(message['data'], raw=False)
+                    self.pubsub.close()
+
+#            res = msgpack.unpackb(self.redis.blpop(
+#                '{}:general:{}'.format(self.name, idx))[1], raw=False)
             if res['status'] == 'error':
                 raise Exception(res['exception'])
             elif res['status'] == 'ok':
@@ -51,19 +60,19 @@ class SimplyRedisClient():
         elif type == 'delayed':
             # Delayed requests
             while True:
-                response = msgpack.unpackb(self.redis.blpop(
-                    '{}:general:{}'.format(self.name, idx))[1], raw=False)
-                if response['status'] == 'error':
-                    raise Exception(response['exception'])
-                elif response['status'] == 'ok':
-                    return response['result']
-                elif response['status'] == 'initiated':
-                    pass
-                elif response['status'] == 'running':
-                    callback(
-                        **{"progress": response['progress'], "message": response['message']})
+                message = self.pubsub.get_message()
+                if message:
+                    if message['type'] == 'message':
+                        res = msgpack.unpackb(message['data'], raw=False)
+                        if res['status'] == 'ok':
+                            self.pubsub.unsubscribe(idx)
+                            self.pubsub.close()
+                            return res['result']
+                        elif res['status'] == 'running':
+                            callback(res['progress'], res['message'])
+                        elif res['status'] == 'initiated':
+                            pass
+                        else:
+                            raise Exception("Unknown error: {}".format(res))
                 else:
-                    raise Exception("Unknown error: {}".format(response))
-
-        # if type == 'delayed':
-        #    res = msgpack.unpackb(self.redis.blpop('{}:general:{}'.format(self.name,idx))[1],raw=False)
+                    time.sleep(0.1)
